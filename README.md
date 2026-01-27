@@ -83,7 +83,8 @@ print(f"Stations count: {len(result['stations'])}")
 
 ## 格式參考 (ImHex)
 
-本解析器的邏輯對應於 rts.hexpat。主要的底層資料類型包括：
+本解析器的邏輯對應於由 Exptech 提供的 rts.hexpat。
+主要的底層資料類型包括：
 
 - **VarInt**: 變動長度整數 (1, 2, 或 3 bytes)，解析後除以 100。
 - **Time40**: 40-bit (5 bytes) 小端序時間戳。
