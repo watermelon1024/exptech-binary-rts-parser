@@ -30,6 +30,9 @@ class RTSData(TypedDict):
     area_intensities: list[AreaIntensity]
 
 
+EPOCH = 1767225600000  # ms
+
+
 class RTSParser:
     """
     解析 RTS（二進位格式）資料的類別
@@ -84,11 +87,11 @@ class RTSParser:
         Time40 (5 bytes)
         u64 ms = b0 | b1<<8 | b2<<16 | b3<<24 | b4<<32
         """
-        # little-endian u40 (5 bytes)
+        # little-endian signed int40 (5 bytes)
         raw_bytes = self.stream.read(5)
         if len(raw_bytes) < 5:
             raise EOFError("Unexpected end of stream while reading time40")
-        return int.from_bytes(raw_bytes, byteorder="little")
+        return int.from_bytes(raw_bytes, byteorder="little", signed=True) + EPOCH
 
     def _read_varint(self):
         """

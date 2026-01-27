@@ -4,6 +4,7 @@
 import std.io;
 
 // RTS 二進制數據格式 v1 - ImHex Pattern
+// 時間使用 int40 + Epoch 2026-01-01 00:00:00 UTC (1767225600000 ms)
 
 // VarInt 類型
 struct VarInt {
@@ -62,18 +63,26 @@ fn format_int_i(u8 raw) {
     return (raw / 10.0) - 3.0;
 };
 
-// 時間戳 (5 bytes, uint40)
+// 時間戳 (5 bytes, int40, 相對 Epoch 2026-01-01 00:00:00 UTC)
+// Epoch = 1767225600000 ms
 struct Time40 {
     u8 bytes[5];
 } [[format("format_time40")]];
 
 fn format_time40(Time40 t) {
-    u64 ms = t.bytes[0]
-           | (u64(t.bytes[1]) << 8)
-           | (u64(t.bytes[2]) << 16)
-           | (u64(t.bytes[3]) << 24)
-           | (u64(t.bytes[4]) << 32);
-    return ms;
+    s64 offset = s64(t.bytes[0])
+               | (s64(t.bytes[1]) << 8)
+               | (s64(t.bytes[2]) << 16)
+               | (s64(t.bytes[3]) << 24)
+               | (s64(t.bytes[4]) << 32);
+
+    // 符號擴展：如果第 39 位是 1，高位填 1
+    if (offset & (1 << 39)) {
+        offset |= 0xFFFFFF0000000000;
+    }
+
+    // 加上 Epoch 2026 得到 Unix 毫秒
+    return offset + 1767225600000;
 };
 
 // Header
