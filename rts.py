@@ -188,4 +188,5 @@ if __name__ == "__main__":
 
     import json
 
-    print(json.dumps(parsed_data))
+    with open("rts_example_parsed.json", "w", encoding="utf-8") as f:
+        json.dump(parsed_data, f, ensure_ascii=False, indent=2)
