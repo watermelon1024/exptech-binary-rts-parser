@@ -59,37 +59,34 @@ class RTSParser:
     # --- Helper methods to read various data types ---
     # u8, u16, u32, Time40, VarInt, IntensityAlert
     # using fail-fast approach: raise EOFError on insufficient data
+    def _read_exact(self, size: int) -> bytes:
+        data = self.stream.read(size)
+        if len(data) < size:
+            raise EOFError(f"Unexpected end of stream while reading {size} bytes")
+        return data
 
-    def _read_u8(self):
+    def _read_u8(self) -> int:
         "unsigned 8-bit integer"
-        data = self.stream.read(1)
-        if not data:
-            raise EOFError("Unexpected end of stream while reading u8")
+        data = self._read_exact(1)
         return data[0]  # u8
 
-    def _read_u16(self):
+    def _read_u16(self) -> int:
         "unsigned 16-bit integer"
-        data = self.stream.read(2)
-        if len(data) < 2:
-            raise EOFError("Unexpected end of stream while reading u16")
+        data = self._read_exact(2)
         return struct.unpack("<H", data)[0]  # little-endian unsigned short (u16)
 
-    def _read_u32(self):
+    def _read_u32(self) -> int:
         "unsigned 32-bit integer"
-        data = self.stream.read(4)
-        if len(data) < 4:
-            raise EOFError("Unexpected end of stream while reading u32")
+        data = self._read_exact(4)
         return struct.unpack("<I", data)[0]  # little-endian unsigned int (u32)
 
-    def _read_time40(self):
+    def _read_time40(self) -> int:
         """
         Time40 (5 bytes)
         u64 ms = b0 | b1<<8 | b2<<16 | b3<<24 | b4<<32
         """
         # little-endian signed int40 (5 bytes)
-        raw_bytes = self.stream.read(5)
-        if len(raw_bytes) < 5:
-            raise EOFError("Unexpected end of stream while reading time40")
+        raw_bytes = self._read_exact(5)
         return int.from_bytes(raw_bytes, byteorder="little", signed=True) + EPOCH
 
     def _read_varint(self):
@@ -108,9 +105,7 @@ class RTSParser:
             raw_val = self._read_u16()
         elif marker == 0xFE:
             # Case 3: marker + u8 * 3 = u24 (3 bytes)
-            b = self.stream.read(3)
-            if len(b) < 3:
-                raise EOFError("Unexpected end of stream while reading varint u24")
+            b = self._read_exact(3)
             raw_val = int.from_bytes(b, byteorder="little")
         # .hexpat hasn't defined marker == 0xFF ?
 
@@ -186,6 +181,7 @@ class RTSParser:
 
 
 if __name__ == "__main__":
+    print("Reading and parsing RTS data from rts_example.bin...")
     with open("rts_example.bin", "rb") as f:
         parser = RTSParser(f)
         parsed_data = parser.parse()
@@ -194,3 +190,4 @@ if __name__ == "__main__":
 
     with open("rts_example_parsed.json", "w", encoding="utf-8") as f:
         json.dump(parsed_data, f, ensure_ascii=False, indent=2)
+    print("RTS data parsed and saved to rts_example_parsed.json")
