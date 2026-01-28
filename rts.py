@@ -1,33 +1,32 @@
 import io
 import struct
-from typing import BinaryIO, TypedDict, Union
+from typing import TYPE_CHECKING, BinaryIO, Union
 
+if TYPE_CHECKING:
+    from typing import TypedDict
 
-class RTSHeader(TypedDict):
-    version: int
-    timestamp_ms: int
-    station_count: int
-    int_count: int
-    reserved: int
+    class RTSHeader(TypedDict):
+        version: int
+        timestamp_ms: int
+        station_count: int
+        int_count: int
+        reserved: int
 
+    class Station(TypedDict):
+        id: int
+        pga: float
+        pgv: float
+        intensity: float
+        is_alert: bool
 
-class Station(TypedDict):
-    id: int
-    pga: float
-    pgv: float
-    intensity: float
-    is_alert: bool
+    class AreaIntensity(TypedDict):
+        code: int
+        intensity: float
 
-
-class AreaIntensity(TypedDict):
-    code: int
-    intensity: float
-
-
-class RTSData(TypedDict):
-    header: RTSHeader
-    stations: list[Station]
-    area_intensities: list[AreaIntensity]
+    class RTSData(TypedDict):
+        header: RTSHeader
+        stations: "list[Station]"
+        area_intensities: "list[AreaIntensity]"
 
 
 EPOCH = 1767225600000  # ms
@@ -132,49 +131,54 @@ class RTSParser:
 
         return (intensity, is_alert)
 
-    def parse(self) -> RTSData:
+    def _read_station(self) -> "Station":
+        """
+        解析單一測站資料並回傳結構化的結果
+        """
+        # u32 station id
+        s_id = self._read_u32()
+        # VarInt pga, pgv
+        pga = self._read_varint()
+        pgv = self._read_varint()
+        # IntensityAlert
+        intensity, is_alert = self._read_intensity_alert()
+
+        return {"id": s_id, "pga": pga, "pgv": pgv, "intensity": intensity, "is_alert": is_alert}
+
+    def parse(self) -> "RTSData":
         """
         解析 RTS 資料並回傳結構化的結果
 
         :return: 解析後的 RTS 資料 (Python dict)
         :rtype: RTSData
         """
+        # u8 version
         version = self._read_u8()
         if version != 1:
             raise ValueError(f"Unsupported RTS version: {version}")
-
+        # Time40 time
+        timestamp_ms = self._read_time40()
+        # u16 station_count
+        station_count = self._read_u16()
+        # u16 int_count
+        int_count = self._read_u16()
+        # u16 reserved
+        reserved = self._read_u16()
         return {
             "header": {
-                # u8 version
                 "version": version,
-                # Time40 time
-                "timestamp_ms": self._read_time40(),
-                # u16 station_count
-                "station_count": (st_count := self._read_u16()),
-                # u16 int_count
-                "int_count": (int_count := self._read_u16()),
-                # u16 reserved
-                "reserved": self._read_u16(),
+                "timestamp_ms": timestamp_ms,
+                "station_count": station_count,
+                "int_count": int_count,
+                "reserved": reserved,
             },
-            "stations": [
-                {
-                    # u32 station id (Hex?)
-                    "id": self._read_u32(),
-                    # VarInt pga, pgv
-                    "pga": self._read_varint(),
-                    "pgv": self._read_varint(),
-                    # IntensityAlert
-                    "intensity": (intensity_alert := self._read_intensity_alert())[0],
-                    "is_alert": intensity_alert[1],
-                }
-                for _ in range(st_count)
-            ],
+            "stations": [self._read_station() for _ in range(station_count)],
             "area_intensities": [
                 {
                     # u16 code
                     "code": self._read_u16(),
                     # u8 i (with format)
-                    "intensity": (self._read_u8() / 10.0) - 3.0,
+                    "intensity": round((self._read_u8() / 10.0) - 3.0, 1),
                 }
                 for _ in range(int_count)
             ],
