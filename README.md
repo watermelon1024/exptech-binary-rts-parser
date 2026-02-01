@@ -11,6 +11,7 @@
 - **Python**: [python/README.md](python/README.md)
 - **TypeScript**: [typescript/README.md](typescript/README.md)
 - **JavaScript**: [javascript/README.md](javascript/README.md)
+- **Go**: [golang/README.md](golang/README.md)
 
 ## 格式定義 (ImHex)
 
