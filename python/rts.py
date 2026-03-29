@@ -1,6 +1,11 @@
 import io
 import struct
-from typing import TYPE_CHECKING, BinaryIO, Union
+from typing import BinaryIO, Union
+
+try:
+    from typing import TYPE_CHECKING
+except ImportError:
+    TYPE_CHECKING = False
 
 if TYPE_CHECKING:
     from typing import TypedDict
@@ -28,6 +33,12 @@ if TYPE_CHECKING:
         stations: "list[Station]"
         area_intensities: "list[AreaIntensity]"
 
+else:
+    # For runtime, just prevent NameError without needing actual TypedDict definitions
+    RTSHeader = object
+    Station = object
+    AreaIntensity = object
+    RTSData = object
 
 EPOCH = 1767225600000  # ms
 
@@ -126,7 +137,7 @@ class RTSParser:
 
         return (intensity, is_alert)
 
-    def _read_station(self) -> "Station":
+    def _read_station(self) -> Station:
         """
         解析單一測站資料並回傳結構化的結果
         """
@@ -140,7 +151,7 @@ class RTSParser:
 
         return {"id": s_id, "pga": pga, "pgv": pgv, "intensity": intensity, "is_alert": is_alert}
 
-    def parse(self) -> "RTSData":
+    def parse(self) -> RTSData:
         """
         解析 RTS 資料並回傳結構化的結果
 
